@@ -25,19 +25,36 @@
 {% block content %}
 <div class="container">    
     <form id="vernamForm">
+        <div class="mb-3">
+            <label class="form-check-label me-2">
+                <input type="radio" name="input-type" value="text" checked> Text
+            </label>
+            <label class="form-check-label">
+                <input type="radio" name="input-type" value="file"> File
+            </label>
+        </div>
         <div class="row justify-content-between">
             <div class="col-4">
                 <div class="field rounded-4 p-3">
-                    <label for="text-input">Text</label>
-                    <textarea id="text-input" name="text-input" class="form-control mt-2" placeholder="Enter text..." required>{{ text if text }}</textarea>
-                    <br>
+                    <div id="text-input-group">
+                        <label for="text-input">Text</label>
+                        <textarea id="text-input" name="text-input" class="form-control mt-2" placeholder="Enter text..."></textarea>
+                    </div>
+                    <div id="file-input-group" style="display:none;">
+                        <label for="file-input">File</label>
+                        <input type="file" id="file-input" name="file" class="form-control mt-2" accept=".txt">
+                        <div id="file-content-preview" style="display:none;">
+                            <label for="file-content-textarea" class="mt-2">File Content</label>
+                            <textarea id="file-content-textarea" class="form-control mt-2" rows="6" style="background:#f8f9fa;"></textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-4">
                 <div class="field rounded-4 p-3">
                     <label for="random-keys">Random Key</label>
                     <div class="input-group mt-2">
-                        <input type="text" id="random-keys" name="random-keys" class="form-control" placeholder="Select decrypt to enter key..." value="{{ keys if keys }}" readonly>
+                        <input type="text" id="random-keys" name="random-keys" class="form-control" placeholder="Select decrypt to enter key..." value="" readonly>
                         <button type="button" class="btn btn-outline-secondary" id="copy-key-btn" title="Copy to clipboard">
                             <img src="{{ url_for('static', filename='img/icon-copy.svg') }}" alt="Copy" style="width:20px; height: 20px;;">
                         </button>
@@ -47,8 +64,13 @@
             </div>
             <div class="col-4">
                 <div class="field rounded-4 p-3">
-                    <label for="output">Result</label>
-                    <textarea id="output" class="form-control mt-2" placeholder="Result..." readonly>{{ output if output }}</textarea>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <label for="output">Result</label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="copy-output-btn" title="Copy">
+                            <img src="{{ url_for('static', filename='img/icon-copy.svg') }}" alt="Copy" style="width: 20px; height: 20px;">
+                        </button>
+                    </div>
+                    <textarea id="output" class="form-control mt-2" placeholder="Result..." readonly></textarea>
                 </div>
             </div>
         </div>
@@ -105,85 +127,176 @@
 
 {% block addedscript %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add copy button functionality
-        const copyBtn = document.getElementById('copy-key-btn');
-        copyBtn.addEventListener('click', function() {
-            const randomKeyInput = document.getElementById('random-keys');
-            
-            navigator.clipboard.writeText(randomKeyInput.value)
-                .then(() => {
-                        // Change button style temporarily to show success
-                        const originalTitle = this.title;
-                        this.title = 'Copied!';
-                        this.classList.add('btn-success');
-                        this.classList.remove('btn-outline-secondary');
-                        
-                        setTimeout(() => {
-                            this.title = originalTitle;
-                            this.classList.remove('btn-success');
-                            this.classList.add('btn-outline-secondary');
-                        }, 1500);
-                    })
-                    .catch(err => {
-                        console.error('Failed to copy:', err);
-                        alert('Failed to copy to clipboard');
-                    });
-        });
+    function clearInputsAndOutput() {
+        document.getElementById('text-input').value = '';
+        document.getElementById('output').value = '';
+        autosizeOutput();
+        document.getElementById('file-input').value = '';
+        document.getElementById('file-content-textarea').value = '';
+        document.getElementById('file-content-preview').style.display = 'none';
+        // Clear summary table
+        const tbody = document.querySelector('.table tbody');
+        tbody.innerHTML = `
+            <tr><th class="text-center w-25">Text</th><td></td></tr>
+            <tr><th class="text-center">Decimal Text</th><td></td></tr>
+            <tr><th class="text-center">Random Key</th><td></td></tr>
+            <tr><th class="text-center">Decimal Output</th><td></td></tr>
+            <tr><th class="text-center">Output</th><td></td></tr>
+        `;
+    }
 
-        const encryptRadio = document.getElementById('encrypt');
-        const decryptRadio = document.getElementById('decrypt');
-        const randomKeysInput = document.getElementById('random-keys');
-        const form = document.getElementById('vernamForm');
-
-        function updateReadonly() {
-            randomKeysInput.readOnly = !decryptRadio.checked;
-        }
-
-        encryptRadio.addEventListener('change', updateReadonly);
-        decryptRadio.addEventListener('change', updateReadonly);
-
-        updateReadonly();
-
-        // Handle form submission
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            try {
-                const response = await fetch('/vernam-cipher', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                
-                const data = await response.json();
-                
-                document.getElementById('output').value = data.output;
-                document.getElementById('random-keys').value = data.key;
-                
-                // Update the table
-                updateTable(data);
-                
-            } catch (error) {
-                console.error('Error:', error);
+    // Toggle between text and file input
+    document.querySelectorAll('input[name="input-type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            clearInputsAndOutput();
+            if (this.value === 'file') {
+                document.getElementById('text-input-group').style.display = 'none';
+                document.getElementById('file-input-group').style.display = '';
+            } else {
+                document.getElementById('text-input-group').style.display = '';
+                document.getElementById('file-input-group').style.display = 'none';
             }
         });
     });
 
+    // Clear on process type (encrypt/decrypt) change
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            clearInputsAndOutput();
+        });
+    });
+
+    // Show/hide file content preview (label + textarea) when a file is selected
+    document.getElementById('file-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const fileContentArea = document.getElementById('file-content-textarea');
+        const fileContentPreview = document.getElementById('file-content-preview');
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                fileContentArea.value = evt.target.result;
+                fileContentPreview.style.display = '';
+            };
+            reader.readAsText(file);
+        } else {
+            fileContentArea.value = '';
+            fileContentPreview.style.display = 'none';
+        }
+    });
+
+    // Autosize function for output textarea
+    function autosizeOutput() {
+        const output = document.getElementById('output');
+        output.style.height = 'auto';
+        output.style.height = Math.min(output.scrollHeight, 300) + 'px';
+    }
+    document.getElementById('output').addEventListener('input', autosizeOutput);
+    autosizeOutput();
+
+    // Copy button for output field
+    document.getElementById('copy-output-btn').addEventListener('click', function() {
+        const output = document.getElementById('output');
+        navigator.clipboard.writeText(output.value)
+            .then(() => {
+                const btn = this;
+                const originalTitle = btn.title;
+                btn.title = 'Copied!';
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-outline-secondary');
+                setTimeout(() => {
+                    btn.title = originalTitle;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-secondary');
+                }, 1500);
+            })
+            .catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+    });
+
+    // Copy button for random key
+    document.getElementById('copy-key-btn').addEventListener('click', function() {
+        const randomKeyInput = document.getElementById('random-keys');
+        navigator.clipboard.writeText(randomKeyInput.value)
+            .then(() => {
+                const originalTitle = this.title;
+                this.title = 'Copied!';
+                this.classList.add('btn-success');
+                this.classList.remove('btn-outline-secondary');
+                setTimeout(() => {
+                    this.title = originalTitle;
+                    this.classList.remove('btn-success');
+                    this.classList.add('btn-outline-secondary');
+                }, 1500);
+            })
+            .catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+    });
+
+    // Enable/disable random key input for decrypt
+    const encryptRadio = document.getElementById('encrypt');
+    const decryptRadio = document.getElementById('decrypt');
+    const randomKeysInput = document.getElementById('random-keys');
+    function updateReadonly() {
+        randomKeysInput.readOnly = !decryptRadio.checked;
+    }
+    encryptRadio.addEventListener('change', updateReadonly);
+    decryptRadio.addEventListener('change', updateReadonly);
+    updateReadonly();
+
+    // Handle form submission
+    document.getElementById('vernamForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const inputType = document.querySelector('input[name="input-type"]:checked').value;
+        let formData = new FormData();
+        if (inputType === 'file') {
+            const fileInput = document.getElementById('file-input');
+            if (!fileInput.files.length) {
+                alert('Please select a file.');
+                return;
+            }
+            formData.append('file', fileInput.files[0]);
+            formData.append('mode', document.querySelector('input[name="mode"]:checked').value);
+            formData.append('random-keys', document.getElementById('random-keys').value);
+            formData.append('input-type', 'file');
+        } else {
+            const textValue = document.getElementById('text-input').value.trim();
+            if (!textValue) {
+                alert('Please enter text to encrypt or decrypt.');
+                document.getElementById('text-input').focus();
+                return;
+            }
+            formData = new FormData(this);
+            formData.append('input-type', 'text');
+        }
+        try {
+            const response = await fetch('/vernam-cipher', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const data = await response.json();
+            document.getElementById('output').value = data.output;
+            document.getElementById('random-keys').value = data.key;
+            autosizeOutput();
+            updateTable(data);
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+
     function updateTable(data) {
         const tbody = document.querySelector('.table tbody');
-
         const text = data.text;
         const decimal_text = data.decimal_text;
         const key = data.key;
         const decimal_output = data.decimal_output;
         const output = data.output;
-
-        // Update each row in the table
         tbody.innerHTML = `
             <tr>
                 <th class="text-center w-25">Text</th>

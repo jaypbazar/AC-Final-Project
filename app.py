@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 from symmetric import CaesarCipher, VernamCipher, BlockCipher
 from asymmetric import RSA, ECC
 from hashing import MD5Hash, SHA1Hash, SHA256Hash, SHA512Hash
+import io
 
 app = Flask(__name__)
 
@@ -18,22 +19,40 @@ def caesar_cipher():
     }
 
     if request.method == 'POST':    
-        text = request.form.get('text-input')
+        input_type = request.form.get('input-type', 'text')
         shift_keys = str(request.form.get('shift-values')).split(' ')
         is_decryption = request.form.get('mode') == 'decrypt'
-
-        output = CaesarCipher.encrypt_decrypt(text, shift_keys, is_decryption)
-
-        # Repeat the keys until it matches the length of the text
-        repeated_keys = (shift_keys * ((len(text) + len(shift_keys) - 1) // len(shift_keys)))[:len(text)]
-
-        # Check if it's an AJAX request
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({
-                'text': text,
-                'keys': repeated_keys,
-                'output': output
-            })
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if input_type == 'file' and 'file' in request.files:
+            file = request.files['file']
+            file_content = file.read().decode('utf-8')
+            output = CaesarCipher.encrypt_decrypt(file_content, shift_keys, is_decryption)
+            repeated_keys = (shift_keys * ((len(file_content) + len(shift_keys) - 1) // len(shift_keys)))[:len(file_content)]
+            if is_ajax:
+                return jsonify({
+                    'text': file_content,
+                    'keys': repeated_keys,
+                    'output': output
+                })
+        elif input_type == 'text':
+            text = request.form.get('text-input')
+            if not text:
+                if is_ajax:
+                    return jsonify({'error': 'No text provided.'}), 400
+                else:
+                    return render_template("caesar.html", contents=contents)
+            output = CaesarCipher.encrypt_decrypt(text, shift_keys, is_decryption)
+            repeated_keys = (shift_keys * ((len(text) + len(shift_keys) - 1) // len(shift_keys)))[:len(text)]
+            if is_ajax:
+                return jsonify({
+                    'text': text,
+                    'keys': repeated_keys,
+                    'output': output
+                })
+        # Fallback for AJAX POST: always return JSON error if nothing else returned
+        if is_ajax:
+            return jsonify({'error': 'Invalid request or missing data.'}), 400
 
     return render_template("caesar.html", contents=contents)
 
@@ -46,22 +65,56 @@ def vernam_cipher():
     }
 
     if request.method == 'POST':
-        text = request.form.get('text-input')
+        input_type = request.form.get('input-type', 'text')
         mode = request.form.get('mode')
-
-        decimal_text = VernamCipher.text_to_decimal(text)
-        key = VernamCipher.generate_key(len(decimal_text)) if mode == 'encrypt' else request.form.get('random-keys')
-        decimal_output = VernamCipher.vernam_encrypt(decimal_text, key) if mode == 'encrypt' else VernamCipher.vernam_decrypt(decimal_text, key)
-        output = VernamCipher.decimal_to_text(decimal_output)
-
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({
-                'text': text,
-                'decimal_text': decimal_text,
-                'key': key,
-                'decimal_output': decimal_output,
-                'output': output
-            })
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if input_type == 'file' and 'file' in request.files:
+            file = request.files['file']
+            file_content = file.read().decode('utf-8')
+            decimal_text = VernamCipher.text_to_decimal(file_content)
+            key = VernamCipher.generate_key(len(decimal_text)) if mode == 'encrypt' else request.form.get('random-keys')
+            decimal_output = VernamCipher.vernam_encrypt(decimal_text, key) if mode == 'encrypt' else VernamCipher.vernam_decrypt(decimal_text, key)
+            output = VernamCipher.decimal_to_text(decimal_output)
+            if is_ajax:
+                return jsonify({
+                    'text': file_content,
+                    'decimal_text': decimal_text,
+                    'key': key,
+                    'decimal_output': decimal_output,
+                    'output': output
+                })
+            else:
+                output_stream = io.BytesIO(output.encode('utf-8'))
+                output_stream.seek(0)
+                return send_file(
+                    output_stream,
+                    as_attachment=True,
+                    download_name='vernam_cipher_result.txt',
+                    mimetype='text/plain'
+                )
+        elif input_type == 'text':
+            text = request.form.get('text-input')
+            if not text:
+                if is_ajax:
+                    return jsonify({'error': 'No text provided.'}), 400
+                else:
+                    return render_template("vernam.html", contents=contents)
+            decimal_text = VernamCipher.text_to_decimal(text)
+            key = VernamCipher.generate_key(len(decimal_text)) if mode == 'encrypt' else request.form.get('random-keys')
+            decimal_output = VernamCipher.vernam_encrypt(decimal_text, key) if mode == 'encrypt' else VernamCipher.vernam_decrypt(decimal_text, key)
+            output = VernamCipher.decimal_to_text(decimal_output)
+            if is_ajax:
+                return jsonify({
+                    'text': text,
+                    'decimal_text': decimal_text,
+                    'key': key,
+                    'decimal_output': decimal_output,
+                    'output': output
+                })
+        # Fallback for AJAX POST: always return JSON error if nothing else returned
+        if is_ajax:
+            return jsonify({'error': 'Invalid request or missing data.'}), 400
 
     return render_template("vernam.html", contents=contents)
 
@@ -74,18 +127,47 @@ def block_cipher():
     }
     
     if request.method == 'POST':
-        text = request.form.get('text-input')
+        input_type = request.form.get('input-type', 'text')
         key = request.form.get('key')
         mode = request.form.get('mode')
-
-        output = BlockCipher.encrypt_decrypt(text, key, mode)
-
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({
-                'text': text,
-                'key': key,
-                'output': output
-            })
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if input_type == 'file' and 'file' in request.files:
+            file = request.files['file']
+            file_content = file.read().decode('utf-8')
+            output = BlockCipher.encrypt_decrypt(file_content, key, mode)
+            if is_ajax:
+                return jsonify({
+                    'text': file_content,
+                    'key': key,
+                    'output': output
+                })
+            else:
+                output_stream = io.BytesIO(output.encode('utf-8'))
+                output_stream.seek(0)
+                return send_file(
+                    output_stream,
+                    as_attachment=True,
+                    download_name='block_cipher_result.txt',
+                    mimetype='text/plain'
+                )
+        elif input_type == 'text':
+            text = request.form.get('text-input')
+            if not text:
+                if is_ajax:
+                    return jsonify({'error': 'No text provided.'}), 400
+                else:
+                    return render_template("block.html", contents=contents)
+            output = BlockCipher.encrypt_decrypt(text, key, mode)
+            if is_ajax:
+                return jsonify({
+                    'text': text,
+                    'key': key,
+                    'output': output
+                })
+        # Fallback for AJAX POST: always return JSON error if nothing else returned
+        if is_ajax:
+            return jsonify({'error': 'Invalid request or missing data.'}), 400
 
     return render_template("block.html", contents=contents)
 
