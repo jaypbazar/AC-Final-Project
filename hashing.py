@@ -43,6 +43,47 @@ class MD5Hash:
         except Exception:
             return False
         
+    @staticmethod
+    def generate_file_hash(file_path: str) -> str:
+        """
+        Generates MD5 hash of a file.
+        
+        Args:
+            file_path: Path to the file to hash
+            
+        Returns:
+            A string containing the hexadecimal MD5 hash of the file
+        """
+        try:
+            md5_hash = hashlib.md5()
+            with open(file_path, 'rb') as file:
+                # Read the file in chunks to handle large files efficiently
+                chunk = file.read(8192)
+                while chunk:
+                    md5_hash.update(chunk)
+                    chunk = file.read(8192)
+            return md5_hash.hexdigest()
+        except Exception as e:
+            return f"Error generating file hash: {str(e)}"
+
+    @staticmethod
+    def verify_file_hash(file_path: str, hash_to_verify: str) -> bool:
+        """
+        Verifies if a file matches a given MD5 hash.
+        
+        Args:
+            file_path: Path to the file to check
+            hash_to_verify: The MD5 hash to verify against
+            
+        Returns:
+            Boolean indicating if the file hash matches
+        """
+        try:
+            generated_hash = MD5Hash.generate_file_hash(file_path)
+            return generated_hash.lower() == hash_to_verify.lower()
+        except Exception:
+            return False
+        
 class SHA1Hash:
     """
     Implementation of SHA-1 hashing algorithm.
