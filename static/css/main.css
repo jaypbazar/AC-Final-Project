@@ -55,3 +55,15 @@ input[type="text"] {
     background-color: #ecded0;
     border: #2C394C 1px solid;
 }
+
+#verify-btn {
+    color: #d3d3d3;
+    border: 2px solid #fb923c;
+    border-radius: 40%;
+}
+#verify-btn:hover {
+    color: #111827;
+    background-color: #fb923c;
+    border: 2px solid #fb923c;
+
+}
