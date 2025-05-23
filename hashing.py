@@ -46,22 +46,20 @@ class MD5Hash:
     @staticmethod
     def generate_file_hash(file_path: str) -> str:
         """
-        Generates MD5 hash of a file.
+        Generates MD5 hash of a text file.
         
         Args:
-            file_path: Path to the file to hash
+            file_path: Path to the text file to hash
             
         Returns:
-            A string containing the hexadecimal MD5 hash of the file
+            A string containing the hexadecimal MD5 hash of the file contents
         """
         try:
             md5_hash = hashlib.md5()
-            with open(file_path, 'rb') as file:
-                # Read the file in chunks to handle large files efficiently
-                chunk = file.read(8192)
-                while chunk:
-                    md5_hash.update(chunk)
-                    chunk = file.read(8192)
+            with open(file_path, 'r', encoding='utf-8') as file:
+                # Read the text file line by line
+                for line in file:
+                    md5_hash.update(line.encode('utf-8'))
             return md5_hash.hexdigest()
         except Exception as e:
             return f"Error generating file hash: {str(e)}"
@@ -211,4 +209,4 @@ class SHA512Hash:
             generated_hash = SHA512Hash.generate_hash(text)
             return generated_hash.lower() == hash_to_verify.lower()
         except Exception:
-            return False  
+            return False
