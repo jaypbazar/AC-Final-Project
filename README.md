@@ -14,10 +14,7 @@
 ---
 
 ## 📘 Introduction
-
-* CipherNest is an educational platform designed to simplify the exploration of cryptographic algorithms. The project provides users with an interactive environment to experiment with encryption, decryption, and hashing techniques. Its primary goal is to offer hands-on learning and demystify complex cryptographic concepts.
-* 
-In the digital era, cryptography is the backbone of secure communication, data protection, and privacy. It is essential for safeguarding sensitive information against threats. CipherNest bridges the gap between theory and practical application, allowing users to understand and appreciate the critical role cryptography plays in technology and security.*
+This project, CipherNest, is an interactive platform designed to allow users to explore and experiment with fundamental cryptographic algorithms. The purpose of CipherNest is to provide a hands-on learning experience with various encryption, decryption, and key exchange concepts. Cryptography is of paramount importance in the digital age, serving as the foundation for secure communication, data protection, and privacy. Understanding its core principles is crucial for anyone involved in information technology and digital security. CipherNest aims to demystify these concepts by providing a clear and engaging platform for users to see cryptographic algorithms in action.
 ---
 
 ## 🎯 Project Objectives
