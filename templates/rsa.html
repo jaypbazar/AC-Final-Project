@@ -59,7 +59,12 @@
                 </div>
                 <div class="col-4">
                     <div class="field rounded-4 p-3">
-                        <label for="output">Output</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label for="output">Output</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="copy-output-btn" title="Copy">
+                                <img src="{{ url_for('static', filename='img/icon-copy.svg') }}" alt="Copy" style="width: 20px; height: 20px;">
+                            </button>
+                        </div>
                         <textarea id="output" class="form-control mt-2" placeholder="Result..." readonly>{{ output if output }}</textarea>
                     </div>
                 </div>
@@ -134,6 +139,41 @@
                     });
             });
         });
+
+        // Add copy button for output field
+        document.getElementById('copy-output-btn').addEventListener('click', function() {
+            const output = document.getElementById('output');
+            navigator.clipboard.writeText(output.value)
+                .then(() => {
+                    const btn = this;
+                    const originalTitle = btn.title;
+                    btn.title = 'Copied!';
+                    btn.classList.add('btn-success');
+                    btn.classList.remove('btn-outline-secondary');
+                    setTimeout(() => {
+                        btn.title = originalTitle;
+                        btn.classList.remove('btn-success');
+                        btn.classList.add('btn-outline-secondary');
+                    }, 1500);
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    alert('Failed to copy to clipboard');
+                });
+        });
+
+        // Clear all input fields except key-pair when switching process type
+        function clearInputsExceptKeyPair() {
+            document.getElementById('text-input').value = '';
+            document.getElementById('output').value = '';
+            document.getElementById('key').value = '';
+            // Optionally clear summary table if you want
+            const processTable = document.getElementById('process-table');
+            let summaryContent = processTable.querySelector('.summary-row');
+            if (summaryContent) summaryContent.innerHTML = '';
+        }
+        document.getElementById('encrypt').addEventListener('change', clearInputsExceptKeyPair);
+        document.getElementById('decrypt').addEventListener('change', clearInputsExceptKeyPair);
 
         // Add key generation form handling
         const generateKeysForm = document.getElementById('generate-keys');
