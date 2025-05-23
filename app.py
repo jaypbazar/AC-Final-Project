@@ -22,26 +22,37 @@ def caesar_cipher():
         input_type = request.form.get('input-type', 'text')
         shift_keys = str(request.form.get('shift-values')).split(' ')
         is_decryption = request.form.get('mode') == 'decrypt'
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
         if input_type == 'file' and 'file' in request.files:
             file = request.files['file']
             file_content = file.read().decode('utf-8')
             output = CaesarCipher.encrypt_decrypt(file_content, shift_keys, is_decryption)
             repeated_keys = (shift_keys * ((len(file_content) + len(shift_keys) - 1) // len(shift_keys)))[:len(file_content)]
-            return jsonify({
-                'text': file_content,
-                'keys': repeated_keys,
-                'output': output
-            })
-        else:
+            if is_ajax:
+                return jsonify({
+                    'text': file_content,
+                    'keys': repeated_keys,
+                    'output': output
+                })
+        elif input_type == 'text':
             text = request.form.get('text-input')
+            if not text:
+                if is_ajax:
+                    return jsonify({'error': 'No text provided.'}), 400
+                else:
+                    return render_template("caesar.html", contents=contents)
             output = CaesarCipher.encrypt_decrypt(text, shift_keys, is_decryption)
             repeated_keys = (shift_keys * ((len(text) + len(shift_keys) - 1) // len(shift_keys)))[:len(text)]
-            return jsonify({
-                'text': text,
-                'keys': repeated_keys,
-                'output': output
-            })
+            if is_ajax:
+                return jsonify({
+                    'text': text,
+                    'keys': repeated_keys,
+                    'output': output
+                })
+        # Fallback for AJAX POST: always return JSON error if nothing else returned
+        if is_ajax:
+            return jsonify({'error': 'Invalid request or missing data.'}), 400
 
     return render_template("caesar.html", contents=contents)
 
@@ -82,8 +93,13 @@ def vernam_cipher():
                     download_name='vernam_cipher_result.txt',
                     mimetype='text/plain'
                 )
-        else:
+        elif input_type == 'text':
             text = request.form.get('text-input')
+            if not text:
+                if is_ajax:
+                    return jsonify({'error': 'No text provided.'}), 400
+                else:
+                    return render_template("vernam.html", contents=contents)
             decimal_text = VernamCipher.text_to_decimal(text)
             key = VernamCipher.generate_key(len(decimal_text)) if mode == 'encrypt' else request.form.get('random-keys')
             decimal_output = VernamCipher.vernam_encrypt(decimal_text, key) if mode == 'encrypt' else VernamCipher.vernam_decrypt(decimal_text, key)
@@ -96,6 +112,9 @@ def vernam_cipher():
                     'decimal_output': decimal_output,
                     'output': output
                 })
+        # Fallback for AJAX POST: always return JSON error if nothing else returned
+        if is_ajax:
+            return jsonify({'error': 'Invalid request or missing data.'}), 400
 
     return render_template("vernam.html", contents=contents)
 
@@ -132,8 +151,13 @@ def block_cipher():
                     download_name='block_cipher_result.txt',
                     mimetype='text/plain'
                 )
-        else:
+        elif input_type == 'text':
             text = request.form.get('text-input')
+            if not text:
+                if is_ajax:
+                    return jsonify({'error': 'No text provided.'}), 400
+                else:
+                    return render_template("block.html", contents=contents)
             output = BlockCipher.encrypt_decrypt(text, key, mode)
             if is_ajax:
                 return jsonify({
@@ -141,6 +165,9 @@ def block_cipher():
                     'key': key,
                     'output': output
                 })
+        # Fallback for AJAX POST: always return JSON error if nothing else returned
+        if is_ajax:
+            return jsonify({'error': 'Invalid request or missing data.'}), 400
 
     return render_template("block.html", contents=contents)
 
