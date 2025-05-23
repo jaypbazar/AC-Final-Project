@@ -56,6 +56,7 @@ def vernam_cipher():
     if request.method == 'POST':
         input_type = request.form.get('input-type', 'text')
         mode = request.form.get('mode')
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
         if input_type == 'file' and 'file' in request.files:
             file = request.files['file']
@@ -64,21 +65,30 @@ def vernam_cipher():
             key = VernamCipher.generate_key(len(decimal_text)) if mode == 'encrypt' else request.form.get('random-keys')
             decimal_output = VernamCipher.vernam_encrypt(decimal_text, key) if mode == 'encrypt' else VernamCipher.vernam_decrypt(decimal_text, key)
             output = VernamCipher.decimal_to_text(decimal_output)
-            output_stream = io.BytesIO(output.encode('utf-8'))
-            output_stream.seek(0)
-            return send_file(
-                output_stream,
-                as_attachment=True,
-                download_name='vernam_cipher_result.txt',
-                mimetype='text/plain'
-            )
+            if is_ajax:
+                return jsonify({
+                    'text': file_content,
+                    'decimal_text': decimal_text,
+                    'key': key,
+                    'decimal_output': decimal_output,
+                    'output': output
+                })
+            else:
+                output_stream = io.BytesIO(output.encode('utf-8'))
+                output_stream.seek(0)
+                return send_file(
+                    output_stream,
+                    as_attachment=True,
+                    download_name='vernam_cipher_result.txt',
+                    mimetype='text/plain'
+                )
         else:
             text = request.form.get('text-input')
             decimal_text = VernamCipher.text_to_decimal(text)
             key = VernamCipher.generate_key(len(decimal_text)) if mode == 'encrypt' else request.form.get('random-keys')
             decimal_output = VernamCipher.vernam_encrypt(decimal_text, key) if mode == 'encrypt' else VernamCipher.vernam_decrypt(decimal_text, key)
             output = VernamCipher.decimal_to_text(decimal_output)
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if is_ajax:
                 return jsonify({
                     'text': text,
                     'decimal_text': decimal_text,
@@ -101,23 +111,31 @@ def block_cipher():
         input_type = request.form.get('input-type', 'text')
         key = request.form.get('key')
         mode = request.form.get('mode')
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
         if input_type == 'file' and 'file' in request.files:
             file = request.files['file']
             file_content = file.read().decode('utf-8')
             output = BlockCipher.encrypt_decrypt(file_content, key, mode)
-            output_stream = io.BytesIO(output.encode('utf-8'))
-            output_stream.seek(0)
-            return send_file(
-                output_stream,
-                as_attachment=True,
-                download_name='block_cipher_result.txt',
-                mimetype='text/plain'
-            )
+            if is_ajax:
+                return jsonify({
+                    'text': file_content,
+                    'key': key,
+                    'output': output
+                })
+            else:
+                output_stream = io.BytesIO(output.encode('utf-8'))
+                output_stream.seek(0)
+                return send_file(
+                    output_stream,
+                    as_attachment=True,
+                    download_name='block_cipher_result.txt',
+                    mimetype='text/plain'
+                )
         else:
             text = request.form.get('text-input')
             output = BlockCipher.encrypt_decrypt(text, key, mode)
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if is_ajax:
                 return jsonify({
                     'text': text,
                     'key': key,
