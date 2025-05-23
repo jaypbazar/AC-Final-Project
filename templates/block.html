@@ -18,24 +18,47 @@
 {% block content %}
     <div class="container">        
         <form id="blockForm">
+            <div class="mb-3">
+                <label class="form-check-label me-2">
+                    <input type="radio" name="input-type" value="text" checked> Text
+                </label>
+                <label class="form-check-label">
+                    <input type="radio" name="input-type" value="file"> File
+                </label>
+            </div>
             <div class="row justify-content-evenly">
                 <div class="col-4">
                     <div class="field rounded-4 p-3">
-                        <label for="text-input">Text</label>
-                        <textarea id="text-input" name="text-input" class="form-control mt-2" placeholder="Enter text..." required>{{ text if text }}</textarea>
+                        <div id="text-input-group">
+                            <label for="text-input">Text</label>
+                            <textarea id="text-input" name="text-input" class="form-control mt-2" placeholder="Enter text..."></textarea>
+                        </div>
+                        <div id="file-input-group" style="display:none;">
+                            <label for="file-input">File</label>
+                            <input type="file" id="file-input" name="file" class="form-control mt-2" accept=".txt">
+                            <div id="file-content-preview" style="display:none;">
+                                <label for="file-content-textarea" class="mt-2">File Content</label>
+                                <textarea id="file-content-textarea" class="form-control mt-2" rows="6" style="background:#f8f9fa;"></textarea>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="field rounded-4 p-3">
                         <label for="key">Key</label>
-                        <input type="text" id="key" name="key" class="form-control mt-2" placeholder="Enter key..." value="{{ keys if keys }}" required>
+                        <input type="text" id="key" name="key" class="form-control mt-2" placeholder="Enter key..." value="" required>
                         <p class="mt-2">Note: Block size is 8 characters.</p>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="field rounded-4 p-3">
-                        <label for="output">Output</label>
-                        <textarea id="output" class="form-control mt-2" placeholder="Result..." readonly>{{ output if output }}</textarea>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label for="output">Output</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="copy-output-btn" title="Copy">
+                                <img src="{{ url_for('static', filename='img/icon-copy.svg') }}" alt="Copy" style="width: 20px; height: 20px;">
+                            </button>
+                        </div>
+                        <textarea id="output" class="form-control mt-2" placeholder="Result..." readonly></textarea>
                     </div>
                 </div>
             </div>
@@ -75,60 +98,158 @@
 
 {% block addedscript %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('blockForm');
-        const encryptRadio = document.getElementById('encrypt');
+    function clearInputsAndOutput() {
+        document.getElementById('text-input').value = '';
+        document.getElementById('output').value = '';
+        autosizeOutput();
+        document.getElementById('file-input').value = '';
+        document.getElementById('file-content-textarea').value = '';
+        document.getElementById('file-content-preview').style.display = 'none';
+        // Clear summary table
+        const tableDiv = document.getElementById('process-table');
+        tableDiv.innerHTML = `
+            <h4>Summary</h4>
+            <div class="justify-content-between text-center bg-secondary p-2 rounded-3">
+                <div class="row">
+                    <div class="col-4">Text</div>
+                    <div class="col-4">Key</div>
+                    <div class="col-4">Output</div>
+                </div>
+            </div>
+        `;
+    }
 
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            try {
-                const response = await fetch('/block-cipher', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                
-                const data = await response.json();
-                
-                // Update the output textarea
-                document.getElementById('output').value = data.output;
-                
-                // Update the summary table
-                updateSummaryTable(data);
-                
-            } catch (error) {
-                console.error('Error:', error);
+    // Toggle between text and file input
+    document.querySelectorAll('input[name="input-type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            clearInputsAndOutput();
+            if (this.value === 'file') {
+                document.getElementById('text-input-group').style.display = 'none';
+                document.getElementById('file-input-group').style.display = '';
+            } else {
+                document.getElementById('text-input-group').style.display = '';
+                document.getElementById('file-input-group').style.display = 'none';
             }
         });
+    });
 
-        function updateSummaryTable(data) {
-            const tableDiv = document.getElementById('process-table');
+    // Clear on process type (encrypt/decrypt) change
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            clearInputsAndOutput();
+        });
+    });
 
-            let tableContent = `
-                <h4>Summary</h4>
-                <div class="justify-content-between text-center bg-secondary p-2 rounded-3">
-                    <div class="row">
-                        <div class="col-4">Text</div>
-                        <div class="col-4">Key</div>
-                        <div class="col-4">Output</div>
-                    </div>
-                </div>
-                <div class="justify-content-between p-2">
-                    <div class="row">
-                        <div class="col-4">${data.text}</div>
-                        <div class="col-4">${data.key}</div>
-                        <div class="col-4">${data.output}</div>
-                    </div>
-                </div>
-            `;
-
-            tableDiv.innerHTML = tableContent;
+    // Show/hide file content preview (label + textarea) when a file is selected
+    document.getElementById('file-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const fileContentArea = document.getElementById('file-content-textarea');
+        const fileContentPreview = document.getElementById('file-content-preview');
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                fileContentArea.value = evt.target.result;
+                fileContentPreview.style.display = '';
+            };
+            reader.readAsText(file);
+        } else {
+            fileContentArea.value = '';
+            fileContentPreview.style.display = 'none';
         }
     });
+
+    // Autosize function for output textarea
+    function autosizeOutput() {
+        const output = document.getElementById('output');
+        output.style.height = 'auto';
+        output.style.height = Math.min(output.scrollHeight, 300) + 'px';
+    }
+    document.getElementById('output').addEventListener('input', autosizeOutput);
+    autosizeOutput();
+
+    // Copy button for output field
+    document.getElementById('copy-output-btn').addEventListener('click', function() {
+        const output = document.getElementById('output');
+        navigator.clipboard.writeText(output.value)
+            .then(() => {
+                const btn = this;
+                const originalTitle = btn.title;
+                btn.title = 'Copied!';
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-outline-secondary');
+                setTimeout(() => {
+                    btn.title = originalTitle;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-secondary');
+                }, 1500);
+            })
+            .catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+    });
+
+    document.getElementById('blockForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const inputType = document.querySelector('input[name="input-type"]:checked').value;
+        let formData = new FormData();
+        if (inputType === 'file') {
+            const fileInput = document.getElementById('file-input');
+            if (!fileInput.files.length) {
+                alert('Please select a file.');
+                return;
+            }
+            formData.append('file', fileInput.files[0]);
+            formData.append('key', document.getElementById('key').value);
+            formData.append('mode', document.querySelector('input[name="mode"]:checked').value);
+            formData.append('input-type', 'file');
+        } else {
+            const textValue = document.getElementById('text-input').value.trim();
+            if (!textValue) {
+                alert('Please enter text to encrypt or decrypt.');
+                document.getElementById('text-input').focus();
+                return;
+            }
+            formData = new FormData(this);
+            formData.append('input-type', 'text');
+        }
+        try {
+            const response = await fetch('/block-cipher', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const data = await response.json();
+            document.getElementById('output').value = data.output;
+            autosizeOutput();
+            updateSummaryTable(data);
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+
+    function updateSummaryTable(data) {
+        const tableDiv = document.getElementById('process-table');
+        let tableContent = `
+            <h4>Summary</h4>
+            <div class="justify-content-between text-center bg-secondary p-2 rounded-3">
+                <div class="row">
+                    <div class="col-4">Text</div>
+                    <div class="col-4">Key</div>
+                    <div class="col-4">Output</div>
+                </div>
+            </div>
+            <div class="justify-content-between p-2">
+                <div class="row">
+                    <div class="col-4">${data.text}</div>
+                    <div class="col-4">${data.key}</div>
+                    <div class="col-4">${data.output}</div>
+                </div>
+            </div>
+        `;
+        tableDiv.innerHTML = tableContent;
+    }
 </script>
 {% endblock addedscript %}
