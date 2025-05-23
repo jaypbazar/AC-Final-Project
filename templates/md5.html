@@ -3,19 +3,39 @@
 {% block content %}
 <div class="container m-4">
     <form id="md5Form">
+        <div class="mb-3">
+            <label class="form-check-label me-2">
+                <input type="radio" name="input-type" value="text" checked> Text
+            </label>
+            <label class="form-check-label">
+                <input type="radio" name="input-type" value="file"> File
+            </label>
+        </div>
         <div class="row justify-content-evenly">
             <div class="col-6">
                 <div class="field rounded-4 p-3">
-                    <label for="text-input">Text</label>
-                    <textarea id="text-input" name="text-input" class="form-control mt-2" placeholder="Enter text to hash..." required>{{ text if text }}</textarea>
-                    <br>
+                    <div id="text-input-group">
+                        <label for="text-input">Text</label>
+                        <textarea id="text-input" name="text-input" class="form-control mt-2" placeholder="Enter text to hash...">{{ text if text }}</textarea>
+                    </div>
+                    <div id="file-input-group" style="display:none;">
+                        <label for="file-input">File</label>
+                        <input type="file" id="file-input" name="file" class="form-control mt-2">
+                        <div id="file-preview" class="mt-2" style="display:none;">
+                            <small class="text-muted">Selected file: <span id="file-name"></span></small>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-6">
                 <div class="field rounded-4 p-3">
-                    <label for="hash-output">MD5 Hash</label>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <label for="hash-output">MD5 Hash</label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="copy-hash-btn" title="Copy">
+                            <img src="{{ url_for('static', filename='img/icon-copy.svg') }}" alt="Copy" style="width: 20px; height: 20px;">
+                        </button>
+                    </div>
                     <textarea id="hash-output" class="form-control mt-2" placeholder="Hash result..." readonly>{{ hash_output if hash_output }}</textarea>
-                    <br>
                 </div>
             </div>
         </div>
@@ -40,10 +60,56 @@
 
 {% block addedscript %}
 <script>
+    // Toggle between text and file input
+    document.querySelectorAll('input[name="input-type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'file') {
+                document.getElementById('text-input-group').style.display = 'none';
+                document.getElementById('file-input-group').style.display = 'block';
+            } else {
+                document.getElementById('text-input-group').style.display = 'block';
+                document.getElementById('file-input-group').style.display = 'none';
+            }
+            document.getElementById('hash-output').value = '';
+            document.getElementById('verification-result').innerHTML = '';
+        });
+    });
+
+    // Show file name when selected
+    document.getElementById('file-input').addEventListener('change', function() {
+        const filePreview = document.getElementById('file-preview');
+        const fileName = document.getElementById('file-name');
+        if (this.files.length > 0) {
+            fileName.textContent = this.files[0].name;
+            filePreview.style.display = 'block';
+        } else {
+            filePreview.style.display = 'none';
+        }
+    });
+
     document.getElementById('md5Form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const formData = new FormData(this);
+        const formData = new FormData();
+        const inputType = document.querySelector('input[name="input-type"]:checked').value;
+        
+        if (inputType === 'file') {
+            const fileInput = document.getElementById('file-input');
+            if (!fileInput.files.length) {
+                alert('Please select a file.');
+                return;
+            }
+            formData.append('file', fileInput.files[0]);
+            formData.append('input_type', 'file');
+        } else {
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) {
+                alert('Please enter text to hash.');
+                return;
+            }
+            formData.append('text', text);
+            formData.append('input_type', 'text');
+        }
         
         try {
             const response = await fetch('/md5-hash', {
@@ -62,27 +128,65 @@
         }
     });
 
+    // Copy hash button
+    document.getElementById('copy-hash-btn').addEventListener('click', function() {
+        const hashOutput = document.getElementById('hash-output');
+        navigator.clipboard.writeText(hashOutput.value)
+            .then(() => {
+                const btn = this;
+                const originalTitle = btn.title;
+                btn.title = 'Copied!';
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-outline-secondary');
+                setTimeout(() => {
+                    btn.title = originalTitle;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-secondary');
+                }, 1500);
+            })
+            .catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+    });
+
     document.getElementById('verify-btn').addEventListener('click', async function() {
-        const text = document.getElementById('text-input').value;
+        const inputType = document.querySelector('input[name="input-type"]:checked').value;
         const hashToVerify = document.getElementById('verify-hash').value;
         const verificationResult = document.getElementById('verification-result');
 
-        if (!text || !hashToVerify) {
-            verificationResult.innerHTML = '<div class="alert alert-warning">Please enter both text and hash to verify</div>';
+        if (!hashToVerify) {
+            verificationResult.innerHTML = '<div class="alert alert-warning">Please enter a hash to verify</div>';
             return;
+        }
+
+        const formData = new FormData();
+        formData.append('hash', hashToVerify);
+        formData.append('input_type', inputType);
+
+        if (inputType === 'file') {
+            const fileInput = document.getElementById('file-input');
+            if (!fileInput.files.length) {
+                verificationResult.innerHTML = '<div class="alert alert-warning">Please select a file</div>';
+                return;
+            }
+            formData.append('file', fileInput.files[0]);
+        } else {
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) {
+                verificationResult.innerHTML = '<div class="alert alert-warning">Please enter text to verify</div>';
+                return;
+            }
+            formData.append('text', text);
         }
 
         try {
             const response = await fetch('/verify-md5', {
                 method: 'POST',
+                body: formData,
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    text: text,
-                    hash: hashToVerify
-                })
+                }
             });
             
             const data = await response.json();
