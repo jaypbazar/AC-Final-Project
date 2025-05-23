@@ -297,12 +297,19 @@ def md5():
 @app.route('/md5-hash', methods=['POST'])
 def md5_hash():
     if request.method == 'POST':
-        text = request.form.get('text-input')
-        hash_result = MD5Hash.generate_hash(text)
+        input_type = request.form.get('input_type')
+        
+        if input_type == 'file' and 'file' in request.files:
+            file = request.files['file']
+            # Read file content as text
+            content = file.read().decode('utf-8')
+            hash_result = MD5Hash.generate_hash(content)
+        else:
+            text = request.form.get('text')
+            hash_result = MD5Hash.generate_hash(text)
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({
-                'text': text,
                 'hash': hash_result
             })
     
@@ -311,14 +318,20 @@ def md5_hash():
 @app.route('/verify-md5', methods=['POST'])
 def verify_md5():
     try:
-        data = request.get_json()
-        text = data.get('text')
-        hash_to_verify = data.get('hash')
-        
-        if not text or not hash_to_verify:
-            return jsonify({'error': 'Missing required parameters'}), 400
-            
-        is_match = MD5Hash.verify_hash(text, hash_to_verify)
+        input_type = request.form.get('input_type')
+        hash_to_verify = request.form.get('hash')
+
+        if input_type == 'file' and 'file' in request.files:
+            file = request.files['file']
+            # Read file content as text
+            content = file.read().decode('utf-8')
+            is_match = MD5Hash.verify_hash(content, hash_to_verify)
+        else:
+            text = request.form.get('text')
+            if not text or not hash_to_verify:
+                return jsonify({'error': 'Missing required parameters'}), 400
+            is_match = MD5Hash.verify_hash(text, hash_to_verify)
+
         return jsonify({'match': is_match})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
