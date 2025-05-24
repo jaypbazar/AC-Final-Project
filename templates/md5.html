@@ -21,9 +21,6 @@
                     <div id="file-input-group" style="display:none;">
                         <label for="file-input">File</label>
                         <input type="file" id="file-input" name="file" class="form-control mt-2" accept=".txt">
-                        <div id="file-preview" class="mt-2" style="display:none;">
-                            <small class="text-muted">Selected file: <span id="file-name"></span></small>
-                        </div>
                         <div id="file-content-preview" style="display:none;">
                             <label for="file-content-textarea" class="mt-2">File Content</label>
                             <textarea id="file-content-textarea" class="form-control mt-2" rows="6" style="background:#f8f9fa;" readonly></textarea>
@@ -81,19 +78,13 @@
         });
     });
 
-    // Show file name and content when selected
+    // Show file content when selected
     document.getElementById('file-input').addEventListener('change', function(e) {
         const file = e.target.files[0];
         const fileContentArea = document.getElementById('file-content-textarea');
         const fileContentPreview = document.getElementById('file-content-preview');
-        const filePreview = document.getElementById('file-preview');
-        const fileName = document.getElementById('file-name');
 
         if (file) {
-            // Show file name
-            fileName.textContent = file.name;
-            filePreview.style.display = 'block';
-
             // Show file content
             const reader = new FileReader();
             reader.onload = function(evt) {
@@ -102,8 +93,7 @@
             };
             reader.readAsText(file);
         } else {
-            // Clear and hide previews
-            filePreview.style.display = 'none';
+            // Clear and hide preview
             fileContentArea.value = '';
             fileContentPreview.style.display = 'none';
         }
