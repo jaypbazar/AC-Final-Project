@@ -288,3 +288,42 @@ class SHA512Hash:
             return generated_hash.lower() == hash_to_verify.lower()
         except Exception:
             return False
+        
+    @staticmethod
+    def generate_file_hash(file_path: str) -> str:
+        """
+        Generates SHA-512 hash of a text file.
+        
+        Args:
+            file_path: Path to the text file to hash
+            
+        Returns:
+            A string containing the hexadecimal SHA-512 hash of the file contents
+        """
+        try:
+            sha512_hash = hashlib.sha512()
+            with open(file_path, 'r', encoding='utf-8') as file:
+                # Read the text file line by line
+                for line in file:
+                    sha512_hash.update(line.encode('utf-8'))
+            return sha512_hash.hexdigest()
+        except Exception as e:
+            return f"Error generating file hash: {str(e)}"
+
+    @staticmethod
+    def verify_file_hash(file_path: str, hash_to_verify: str) -> bool:
+        """
+        Verifies if a file matches a given SHA-512 hash.
+        
+        Args:
+            file_path: Path to the file to check
+            hash_to_verify: The SHA-512 hash to verify against
+            
+        Returns:
+            Boolean indicating if the file hash matches
+        """
+        try:
+            generated_hash = SHA512Hash.generate_file_hash(file_path)
+            return generated_hash.lower() == hash_to_verify.lower()
+        except Exception:
+            return False
