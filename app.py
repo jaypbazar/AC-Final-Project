@@ -348,12 +348,19 @@ def sha1():
 @app.route('/sha1-hash', methods=['POST'])
 def sha1_hash():
     if request.method == 'POST':
-        text = request.form.get('text-input')
-        hash_result = SHA1Hash.generate_hash(text)
+        input_type = request.form.get('input_type')
+        
+        if input_type == 'file' and 'file' in request.files:
+            file = request.files['file']
+            # Read file content as text
+            content = file.read().decode('utf-8')
+            hash_result = SHA1Hash.generate_hash(content)
+        else:
+            text = request.form.get('text')
+            hash_result = SHA1Hash.generate_hash(text)
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({
-                'text': text,
                 'hash': hash_result
             })
     
@@ -362,14 +369,20 @@ def sha1_hash():
 @app.route('/verify-sha1', methods=['POST'])
 def verify_sha1():
     try:
-        data = request.get_json()
-        text = data.get('text')
-        hash_to_verify = data.get('hash')
-        
-        if not text or not hash_to_verify:
-            return jsonify({'error': 'Missing required parameters'}), 400
-            
-        is_match = SHA1Hash.verify_hash(text, hash_to_verify)
+        input_type = request.form.get('input_type')
+        hash_to_verify = request.form.get('hash')
+
+        if input_type == 'file' and 'file' in request.files:
+            file = request.files['file']
+            # Read file content as text
+            content = file.read().decode('utf-8')
+            is_match = SHA1Hash.verify_hash(content, hash_to_verify)
+        else:
+            text = request.form.get('text')
+            if not text or not hash_to_verify:
+                return jsonify({'error': 'Missing required parameters'}), 400
+            is_match = SHA1Hash.verify_hash(text, hash_to_verify)
+
         return jsonify({'match': is_match})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
