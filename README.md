@@ -39,7 +39,7 @@ This project aims to achieve the following:
 ### Application Architecture and UI Choice:
 
 CipherNest is a web-based application developed using the **Flask** framework in Python. Flask was chosen for its simplicity, flexibility, and suitability for creating web UIs. The application follows a client-server architecture:
-* **Frontend (Client-Side)**: HTML, CSS, and JavaScript are used to create an interactive and responsive user interface. Templates for different ciphers are rendered to allow users to input text, select modes (encrypt/decrypt), and view results. AJAX is used for some operations to update parts of the page without a full reload, enhancing user experience.
+* **Frontend (Client-Side)**: HTML,BOOTSTRAP, CSS, and JavaScript are used to create an interactive and responsive user interface. Templates for different ciphers are rendered to allow users to input text, select modes (encrypt/decrypt), and view results. AJAX is used for some operations to update parts of the page without a full reload, enhancing user experience.
 * **Backend (Server-Side)**: Python with Flask handles the cryptographic logic. Different routes are defined for each cryptographic algorithm. These routes process user input from the forms, call the appropriate cryptographic functions from `symmetric.py`, `asymmetric.py`, and `hashing.py`, and then return the results to the frontend.
 
 The UI is designed to be intuitive, with a clear sidebar for navigation between different ciphers and distinct sections for input, key management, and output for each algorithm.
