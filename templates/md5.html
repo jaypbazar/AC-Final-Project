@@ -24,6 +24,10 @@
                         <div id="file-preview" class="mt-2" style="display:none;">
                             <small class="text-muted">Selected file: <span id="file-name"></span></small>
                         </div>
+                        <div id="file-content-preview" style="display:none;">
+                            <label for="file-content-textarea" class="mt-2">File Content</label>
+                            <textarea id="file-content-textarea" class="form-control mt-2" rows="6" style="background:#f8f9fa;" readonly></textarea>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -72,18 +76,36 @@
             }
             document.getElementById('hash-output').value = '';
             document.getElementById('verification-result').innerHTML = '';
+            document.getElementById('file-content-preview').style.display = 'none';
+            document.getElementById('file-content-textarea').value = '';
         });
     });
 
-    // Show file name when selected
-    document.getElementById('file-input').addEventListener('change', function() {
+    // Show file name and content when selected
+    document.getElementById('file-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const fileContentArea = document.getElementById('file-content-textarea');
+        const fileContentPreview = document.getElementById('file-content-preview');
         const filePreview = document.getElementById('file-preview');
         const fileName = document.getElementById('file-name');
-        if (this.files.length > 0) {
-            fileName.textContent = this.files[0].name;
+
+        if (file) {
+            // Show file name
+            fileName.textContent = file.name;
             filePreview.style.display = 'block';
+
+            // Show file content
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                fileContentArea.value = evt.target.result;
+                fileContentPreview.style.display = 'block';
+            };
+            reader.readAsText(file);
         } else {
+            // Clear and hide previews
             filePreview.style.display = 'none';
+            fileContentArea.value = '';
+            fileContentPreview.style.display = 'none';
         }
     });
 
